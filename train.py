@@ -128,7 +128,7 @@ def zeropower_via_newtonschulz5(G: Tensor, steps: int) -> Tensor:
         A = X @ X.mT
         B = b * A + c * A @ A # quintic computation strategy adapted from suggestion by @jxbz, @leloykun, and @YouJiacheng
         X = a * X + B @ X
-    
+
     if G.size(-2) > G.size(-1):
         X = X.mT
     return X
@@ -463,9 +463,6 @@ rank = int(os.environ["RANK"])
 # assert torch.cuda.is_available()
 # device = torch.device("cuda", int(os.environ["LOCAL_RANK"]))
 # torch.cuda.set_device(device)
-# dist.init_process_group(backend="nccl", device_id=device)
-# dist.barrier()
-# master_process = (rank == 0) # this process will do logging, checkpointing etc.
 
 world_size = int(os.environ["WORLD_SIZE"])
 # changes for running on 2x4090
@@ -473,11 +470,15 @@ desired_world_size = 8
 world_size_factor = desired_world_size // world_size
 original_seq_len = args.train_seq_len
 args.train_seq_len = 32 * 1024
-args.val_seq_len = 32 * 1024 
+args.val_seq_len = 32 * 1024
 gradient_accumulation_steps = (original_seq_len * world_size_factor) // args.train_seq_len
 assert world_size * world_size_factor == desired_world_size, f"This code is designed for 8xH100. {world_size * world_size_factor=} != {desired_world_size=}"
 assert gradient_accumulation_steps * args.train_seq_len == desired_world_size * original_seq_len, f"{gradient_accumulation_steps * args.train_seq_len=} != {desired_world_size * original_seq_len=}"
 assert torch.cuda.is_available()
+
+dist.init_process_group(backend="nccl", device_id=device)
+dist.barrier()
+master_process = (rank == 0) # this process will do logging, checkpointing etc.
 
 # begin logging
 logfile = None
@@ -650,4 +651,3 @@ for step in range(train_steps + 1):
 print0(f"peak memory allocated: {torch.cuda.max_memory_allocated() // 1024 // 1024} MiB "
        f"reserved: {torch.cuda.max_memory_reserved() // 1024 // 1024} MiB", console=True)
 dist.destroy_process_group()
-
