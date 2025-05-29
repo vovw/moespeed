@@ -1,0 +1,66 @@
+╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                                                                                                  ║
+║  ███╗   ███╗ ██████╗ ███████╗███████╗██████╗ ███████╗███████╗██████╗                                             ║
+║  ████╗ ████║██╔═══██╗██╔════╝██╔════╝██╔══██╗██╔════╝██╔════╝██╔══██╗                                            ║
+║  ██╔████╔██║██║   ██║█████╗  ███████╗██████╔╝█████╗  █████╗  ██║  ██║                                            ║
+║  ██║╚██╔╝██║██║   ██║██╔══╝  ╚════██║██╔═══╝ ██╔══╝  ██╔══╝  ██║  ██║                                            ║
+║  ██║ ╚═╝ ██║╚██████╔╝███████╗███████║██║     ███████╗███████╗██████╔╝                                            ║
+║  ╚═╝     ╚═╝ ╚═════╝ ╚══════╝╚══════╝╚═╝     ╚══════╝╚══════╝╚═════╝                                             ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+
+Based on DeepSeek-V2/V3 Multi-Latent Attention + Expert Parallelism Research
+Inspired by Switch-Head, MoEUT papers, and NanoGPT speedrun optimizations
+
+┌─────────────────┬───────────────────┬──────────────────┬────────────────────────────────────────────────┐
+│   COMPONENT     │    IMPLEMENTATION │       PURPOSE    │                INNOVATION                      │
+├─────────────────┼───────────────────┼──────────────────┼────────────────────────────────────────────────┤
+│ Multi-Latent    │ Low-rank Q/K/V    │ Parameter        │ Shared RoPE across heads + joint KV embedding  │
+│ Attention (MLA) │ projections       │ efficiency       │ inspired by DeepSeek-V2 architecture           │ 
+├─────────────────┼───────────────────┼──────────────────┼────────────────────────────────────────────────┤
+│ Mixture of      │ Expert parallel   │ Model            │ Distributed experts across GPUs with           │
+│ Experts (MoE)   │ distribution      │ expressivity     │ all-gather/reduce-scatter communication        │
+├─────────────────┼───────────────────┼──────────────────┼────────────────────────────────────────────────┤
+│ FlexAttention   │ Block-sparse      │ Long context     │ Document-aware causal masking with             │
+│                 │ attention         │ efficiency       │ sliding window for 48K+ token sequences        │
+├─────────────────┼───────────────────┼──────────────────┼────────────────────────────────────────────────┤
+│ ReLU²           │ Squared ReLU      │ Sample           │ 1-2% better than GELU for larger models        │
+│ Activation      │ activation        │ efficiency       │ as discovered in NanoGPT experiments           │ 
+└─────────────────┴───────────────────┴──────────────────┴────────────────────────────────────────────────┘
+
+Attention Mechanism 
+- low-rank attention projections are surprisingly effective (parameter reduction ≠ performance loss).
+- joint KV embeddings provide massive inference speedup through reduced KV cache size.
+- shared positional encodings across heads don't hurt performance.
+- head-wise specialization emerges from low-rank bottlenecks, not high-dimensional projections.
+
+Mixture-of-Experts
+- expressivity bottleneck occurs at FFN layers, not attention projections.
+- linear MoEs provide minimal benefit over dense layers in attention.
+- load balancing prevents expert collapse, but attention MoEs saturate early.
+- FFN MoEs show promise but require 10B+ tokens for sample efficiency.
+- expert specialization requires significant training data (10B+ tokens).
+- load balancing is critical but insufficient for attention-layer MoEs.
+
+Activation Function
+- ReLU² activation shows consistent 1-2% improvement over GELU at scale.
+
+Parallelism
+- expert parallelism enables larger model capacity without proportional memory increase.
+
+Scaling
+- MLA architecture should scale to larger models (evidence from DeepSeek-V3).
+- expert parallelism enables model growth without memory explosion.
+- flexattention patterns will become critical for long-context applications.
+- hybrid dense/sparse architectures are the future of efficient large models.
+
+
+credits 
+- Rishi's PicoGPT research (MLA + MoE experimental insights)
+- PyTorch FlexAttention team
+- NanoGPT speedrun contributors (base architecture optimizations)
+- DeepSeek-V2/V3: Multi-Latent Attention architecture
+- Switch Transformer: Sparse expert routing
+- MoEUT: Mixture of Experts in Unified Transformers
+- Switch-Head: Expert routing in attention layers
+- FlexAttention: Efficient attention for long sequences
