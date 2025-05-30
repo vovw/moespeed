@@ -13,7 +13,7 @@ Based on DeepSeek-V2/V3 Multi-Latent Attention + Expert Parallelism Research
 Inspired by Switch-Head, MoEUT papers, and NanoGPT speedrun optimizations
 
 ┌─────────────────┬───────────────────┬──────────────────┬────────────────────────────────────────────────┐
-│   COMPONENT     │    IMPLEMENTATION │       PURPOSE    │                INNOVATION                      │
+│   COMPONENT     │    IMPLEMENTATION │       PURPOSE    │                INTENT                          │
 ├─────────────────┼───────────────────┼──────────────────┼────────────────────────────────────────────────┤
 │ Multi-Latent    │ Low-rank Q/K/V    │ Parameter        │ Shared RoPE across heads + joint KV embedding  │
 │ Attention (MLA) │ projections       │ efficiency       │ inspired by DeepSeek-V2 architecture           │ 
